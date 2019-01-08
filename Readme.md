@@ -12,7 +12,7 @@ To start a telepathy server:
 ```
 To start an async tcp server:
 ```sh
-./server.x86_64 Telepathy 9876
+./server.x86_64 Async 9876
 ```
 
 the clients were run using jmeter,  in a separate computer going over wifi.
