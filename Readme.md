@@ -27,59 +27,64 @@ An error is reported if a transaction takes more than 10 seconds or if it return
 
 With a telepathy server I got this:
 ```sh
-jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=1
-summary = 500000 in 00:00:35 = 14129.9/s Avg:     5 Min:     1 Max:    45 Err:     0 (0.00%)
+$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=1
+summary =  20000 in 00:00:39 =  510.9/s Avg:     1 Min:     1 Max:   825 Err:     0 (0.00%)
 ```
 
-With a single thread client,  telepathy is able to process 14K messages per second using roughly 130-150% cpu.
+With a single thread client,  telepathy is able to process 510 messages per second.  The slowest message took 0.8 seconds. CPU at 24 %
 
 With an async TCP server  I got this:
 
 ```sh
-summary = 500000 in 00:00:38 = 13029.3/s Avg:     5 Min:     1 Max:   247 Err:     0 (0.00%)
+summary =  20000 in 00:00:49 =  407.8/s Avg:     2 Min:     1 Max:   218 Err:     0 (0.00%)
 ```
-
-The server used 250-280%  CPU during this time.  Clearly for a single thread client telepathy does better
-
-## 10 threads
-
-Telepathy:
-```sh
-jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=10
-summary = 500000 in 00:00:40 = 12445.2/s Avg:     6 Min:     1 Max: 10013 Err:     2 (0.00%)
-```
-Telepathy had a 4 errors total,  140% CPU
-
-Async TCP:
-```sh
-summary = 500000 in 00:00:39 = 12734.6/s Avg:     5 Min:     1 Max:   238 Err:     0 (0.00%)
-```
-No errors,  270% CPU,  bandwidth is the same
+lower throughput.  Cpu at 50-60%,   but it had much better latency,  the worst package took only 0.2 seconds.
 
 ## 50 threads
 
 Telepathy:
 ```sh
-jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=10
-summary = 500000 in 00:00:41 = 12342.0/s Avg:     6 Min:     1 Max: 10165 Err:    47 (0.01%)
+$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=50
+summary = 1000000 in 00:01:35 = 10571.8/s Avg:     4 Min:     1 Max:  1610 Err:     0 (0.00%)
 ```
-
-Async TCP
-```sh
-summary = 500000 in 00:00:38 = 13245.4/s Avg:     5 Min:     1 Max:    75 Err:     0 (0.00%)
-```
-while bandwidth and cpu remain the same,  Async TCP exhibits a max latency of 75 ms  while Telepathy can go beyond 10 seconds.
-
-## 100 threads
-
-Telepathy:
-```sh
-summary = 500000 in 00:00:40 = 12413.7/s Avg:     6 Min:     1 Max: 10013 Err:    27 (0.01%)
-```
+CPU usage 130-150%.  
 
 Async TCP:
 ```sh
-summary = 500000 in 00:00:38 = 13164.1/s Avg:     5 Min:     1 Max:   418 Err:     0 (0.00%)
+summary = 1000000 in 00:01:42 = 9832.3/s Avg:     4 Min:     1 Max:   417 Err:     0 (0.00%)
+```
+250% CPU
+
+## 250 threads
+
+Telepathy:
+```sh
+$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=250
+summary =   5109 in 00:03:34 =   23.8/s Avg: 10005 Min: 10000 Max: 10372 Err:  5109 (100.00%)
+```
+at 250 threads,  Telepathy choke,  it was not able to reply to any message
+
+
+Async TCP
+```sh
+summary = 5000000 in 00:04:56 = 16868.8/s Avg:    14 Min:     1 Max:   293 Err:     0 (0.00%)
 ```
 
-## 300 threads
+
+## 500 threads
+
+Telepathy not able to cope.
+
+Async TCP:
+```sh
+summary = 5604554 in 00:05:35 = 16728.8/s Avg:    29 Min:     1 Max:  1100 Err:     0 (0.00%)
+```
+
+## 1000 threads
+
+Telepathy not able to cope.
+
+Async TCP:
+```sh
+summary = 10670731 in 00:10:30 = 16942.7/s Avg:    58 Min:     2 Max:  2737 Err:     0 (0.00%)
+```
