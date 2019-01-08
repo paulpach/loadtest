@@ -57,11 +57,8 @@ summary = 1000000 in 00:01:42 = 9832.3/s Avg:     4 Min:     1 Max:   417 Err:  
 
 ## 250 threads
 
-Telepathy:
-```sh
-$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=250
-summary =   5109 in 00:03:34 =   23.8/s Avg: 10005 Min: 10000 Max: 10372 Err:  5109 (100.00%)
-```
+Telepathy: ERROR
+
 at 250 threads,  Telepathy choke,  it was not able to reply to any message
 
 
@@ -73,7 +70,7 @@ summary = 5000000 in 00:04:56 = 16868.8/s Avg:    14 Min:     1 Max:   293 Err: 
 
 ## 500 threads
 
-Telepathy not able to cope.
+Telepathy: ERROR
 
 Async TCP:
 ```sh
@@ -82,7 +79,7 @@ summary = 5604554 in 00:05:35 = 16728.8/s Avg:    29 Min:     1 Max:  1100 Err: 
 
 ## 1000 threads
 
-Telepathy not able to cope.
+Telepathy: ERROR
 
 Async TCP:
 ```sh
