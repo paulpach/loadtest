@@ -23,7 +23,19 @@ An error is reported if a transaction takes more than 10 seconds or if it return
 
 # Results
 
+Server:  Linux,  i3-6100U @ 2.30 GHz  (2 core,  4 threads)
+
+| Threads |  Tel Tp | Async Tp | Tel Lat | Async Lat | Tel CPU | Async CPU |
+| ------: | ------: | -------: | ------: | --------: | ------: | --------: |
+|       1 |     510 |      407 |     825 |       218 |     24% |       50% |
+|      50 |   10571 |     9832 |    1610 |       417 |    130% |      250% |
+|     250 |         |    16868 |         |       293 |         |      270% |
+|     500 |         |    16728 |         |      1100 |         |      270% |
+|    1000 |         |    16942 |         |      2737 |         |      280% |
+
+
 ## 1 thread 
+
 
 With a telepathy server I got this:
 ```sh
