@@ -9,7 +9,8 @@ public class ServerGUI : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-       
+        Application.targetFrameRate = 60;
+
         string[] args = System.Environment.GetCommandLineArgs();
 
         if (args.Length <=1 )
