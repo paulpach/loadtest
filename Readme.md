@@ -23,7 +23,9 @@ An error is reported if a transaction takes more than 10 seconds or if it return
 
 # Results
 
+
 Server:  Linux,  i3-6100U @ 2.30 GHz  (2 core,  4 threads)
+Going over local wifi
 
 | Threads |  Tel Tp | Async Tp | Tel Lat | Async Lat | Tel CPU | Async CPU |
 | ------: | ------: | -------: | ------: | --------: | ------: | --------: |
