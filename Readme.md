@@ -41,7 +41,7 @@ Going over local wifi
 
 With a telepathy server I got this:
 ```sh
-$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=1
+$ jmeter -n -t ccutest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=1
 summary =  20000 in 00:00:39 =  510.9/s Avg:     1 Min:     1 Max:   825 Err:     0 (0.00%)
 ```
 
@@ -58,7 +58,7 @@ lower throughput.  Cpu at 50-60%,   but it had much better latency,  the worst p
 
 Telepathy:
 ```sh
-$ jmeter -n -t loadtest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=50
+$ jmeter -n -t ccutest.jmx -JHOST=pc.local -JPORT=9876 -JTHREADS=50
 summary = 1000000 in 00:01:35 = 10571.8/s Avg:     4 Min:     1 Max:  1610 Err:     0 (0.00%)
 ```
 CPU usage 130-150%.  
