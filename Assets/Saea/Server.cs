@@ -279,7 +279,6 @@ namespace Mirror.Saea
                 }
                 else
                 {
-                    Debug.LogWarning("Closing socket " + e.BytesTransferred);
                     CloseClientSocket(e);
                 }
             }
