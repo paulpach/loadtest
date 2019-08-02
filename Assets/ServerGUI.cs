@@ -179,7 +179,7 @@ public class ServerGUI : MonoBehaviour {
             {
 
                 if (message.eventType == Mirror.Saea.EventType.Data)
-                    telepathyServer.Send(message.connectionId, message.data);
+                    saeaServer.Send(message.connectionId, message.data);
             }
         }
         else if (asyncServer != null)
