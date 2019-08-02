@@ -4,9 +4,10 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Mirror.Transport.Tcp
+namespace Mirror.Tcp
 {
     public class Server : Common
     {
@@ -19,20 +20,24 @@ namespace Mirror.Transport.Tcp
         TcpListener listener;
 
         // clients with <connectionId, TcpClient>
-        Dictionary<int, TcpClient> clients = new Dictionary<int, TcpClient>();
+        readonly Dictionary<int, TcpClient> clients = new Dictionary<int, TcpClient>();
+
+        static readonly ObjectPool<MemoryStream> bufferPool = new ObjectPool<MemoryStream>(() => new MemoryStream());
+
+        static readonly Dictionary<int, MemoryStream> dirtyBuffers = new Dictionary<int, MemoryStream>();
 
         public bool NoDelay = true;
 
         // connectionId counter
         // (right now we only use it from one listener thread, but we might have
         //  multiple threads later in case of WebSockets etc.)
-        // -> static so that another server instance doesn't start at 0 again.
-        static int counter = 0;
+        //  HLAPI uses 0 for local connection,  so our ids start with 1
+        int counter = 1;
 
         // public next id function in case someone needs to reserve an id
         // (e.g. if hostMode should always have 0 connection and external
         //  connections should start at 1, etc.)
-        public static int NextConnectionId()
+        public int NextConnectionId()
         {
             int id = Interlocked.Increment(ref counter);
 
@@ -63,7 +68,7 @@ namespace Mirror.Transport.Tcp
         }
 
         // the listener thread's listen function
-        async public void Listen(int port, int maxConnections = int.MaxValue)
+        public async Task ListenAsync(int port)
         {
             // absolutely must wrap with try/catch, otherwise thread
             // exceptions are silent
@@ -92,7 +97,8 @@ namespace Mirror.Transport.Tcp
                     TcpClient tcpClient = await listener.AcceptTcpClientAsync();
 
                     // non blocking receive loop
-                    ReceiveLoop(tcpClient);
+                    // must be on main thread
+                    Task receive = ReceiveLoop(tcpClient);
                 }
             }
             catch(ObjectDisposedException)
@@ -109,7 +115,7 @@ namespace Mirror.Transport.Tcp
             }
         }
 
-        private async void ReceiveLoop(TcpClient tcpClient)
+        private async Task ReceiveLoop(TcpClient tcpClient)
         {
             int connectionId = NextConnectionId();
             clients.Add(connectionId, tcpClient);
@@ -128,8 +134,15 @@ namespace Mirror.Transport.Tcp
                         if (data == null)
                             break;
 
-                        // we received some data,  raise event
-                        ReceivedData?.Invoke(connectionId, data);
+                        try
+                        {
+                            // we received some data,  raise event
+                            ReceivedData?.Invoke(connectionId, data);
+                        }
+                        catch (Exception exception)
+                        {
+                            ReceivedError?.Invoke(connectionId, exception);
+                        }
                     }
                 }
             }
@@ -156,7 +169,7 @@ namespace Mirror.Transport.Tcp
             listener.Stop();
 
             // close all client connections
-            foreach (var kvp in clients)
+            foreach (KeyValuePair<int, TcpClient> kvp in clients)
             {
                 // close the stream if not closed yet. it may have been closed
                 // by a disconnect already, so use try/catch
@@ -168,19 +181,45 @@ namespace Mirror.Transport.Tcp
             listener = null;
         }
 
+        // queue up all the messages
+        public void Send(int connectionId, ArraySegment<byte> data)
+        {
+            if (!dirtyBuffers.TryGetValue(connectionId, out MemoryStream buffer))
+            {
+                buffer = bufferPool.GetObject();
+                buffer.SetLength(0);
+                dirtyBuffers.Add(connectionId, buffer);
+            }
+
+            buffer.WritePrefixedData(data);
+        }
+
+        // send everything at the end of the frame
+        public void Flush()
+        {
+            foreach (KeyValuePair<int, MemoryStream> kvp in dirtyBuffers)
+            {
+                int connectionId = kvp.Key;
+                MemoryStream buffer = kvp.Value;
+                _ = SendAsync(connectionId, buffer);
+            }
+
+            dirtyBuffers.Clear();
+        }
+
         // send message to client using socket connection or throws exception
-        public async void Send(int connectionId, byte[] data)
+        private async Task SendAsync(int connectionId, MemoryStream data)
         {
             // find the connection
-            TcpClient client;
-            if (clients.TryGetValue(connectionId, out client))
+            if (clients.TryGetValue(connectionId, out TcpClient client))
             {
                 try
                 {
                     NetworkStream stream = client.GetStream();
                     await SendMessage(stream, data);
                 }
-                catch (ObjectDisposedException) {
+                catch (ObjectDisposedException)
+                {
                     // connection has been closed,  swallow exception
                     Disconnect(connectionId);
                 }
@@ -205,29 +244,27 @@ namespace Mirror.Transport.Tcp
             {
                 ReceivedError?.Invoke(connectionId, new SocketException((int)SocketError.NotConnected));
             }
+            // we are done with the buffer return it
+            bufferPool.PutObject(data);
         }
 
         // get connection info in case it's needed (IP etc.)
         // (we should never pass the TcpClient to the outside)
-        public bool GetConnectionInfo(int connectionId, out string address)
+        public string GetClientAddress(int connectionId)
         {
             // find the connection
-            TcpClient client;
-            if (clients.TryGetValue(connectionId, out client))
+            if (clients.TryGetValue(connectionId, out TcpClient client))
             {
-                address = ((IPEndPoint)client.Client.RemoteEndPoint).ToString();
-                return true;
+                return ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
             }
-            address = null;
-            return false;
+            return null;
         }
 
         // disconnect (kick) a client
         public bool Disconnect(int connectionId)
         {
             // find the connection
-            TcpClient client;
-            if (clients.TryGetValue(connectionId, out client))
+            if (clients.TryGetValue(connectionId, out TcpClient client))
             {
                 clients.Remove(connectionId);
                 // just close it. client thread will take care of the rest.

@@ -1,8 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace Mirror.Transport.Tcp
+namespace Mirror.Tcp
 {
 
     public static class NetworkStreamExtensions
@@ -20,8 +21,7 @@ namespace Mirror.Transport.Tcp
             // keep reading until we fill up the buffer;
             while (offset < size)
             {
-                int received = 0;
-
+                int received;
                 if (stream is NetworkStream && ((NetworkStream)stream).DataAvailable)
                 {
                     // read available data immediatelly
@@ -49,5 +49,18 @@ namespace Mirror.Transport.Tcp
             return data;
         }
 
+        public static void WriteInt(this Stream stream, int length)
+        {
+            stream.WriteByte((byte)(length >> 24));
+            stream.WriteByte((byte)(length >> 16));
+            stream.WriteByte((byte)(length >> 8));
+            stream.WriteByte((byte)(length));
+        }
+
+        public static void WritePrefixedData(this Stream stream, ArraySegment<byte> data)
+        {
+            stream.WriteInt(data.Count);
+            stream.Write(data.Array, data.Offset, data.Count);
+        }
     }
 }

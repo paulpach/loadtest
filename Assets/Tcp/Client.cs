@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace Mirror.Transport.Tcp
+namespace Mirror.Tcp
 {
     public class Client : Common
     {
@@ -83,8 +83,15 @@ namespace Mirror.Transport.Tcp
                     if (data == null)
                         break;
 
-                    // we received some data,  raise event
-                    ReceivedData?.Invoke(data);
+                    try
+                    {
+                        // we received some data,  raise event
+                        ReceivedData?.Invoke(data);
+                    }
+                    catch (Exception exception)
+                    {
+                        ReceivedError?.Invoke(exception);
+                    }
                 }
             }
         }
@@ -103,7 +110,7 @@ namespace Mirror.Transport.Tcp
         }
 
         // send the data or throw exception
-        public async void Send(byte[] data)
+        public async Task SendAsync(ArraySegment<byte> data)
         {
             if (client == null)
             {

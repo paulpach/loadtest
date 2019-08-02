@@ -29,17 +29,45 @@ public class ServerGUI : MonoBehaviour {
 
             StartAsyncServer(port);
         }
+        else if (args[1] == "Saea")
+        {
+            ushort port = ushort.Parse(args[2]);
+
+            StartSaeaServer(port);
+        }
         else if (IsHeadless())
         {
             usage(args);
         }
+
+        lastTime = Time.time;
+        framecount = Time.frameCount;
+        InvokeRepeating(nameof(ShowFps), 10f, 10f);
     }
+
+    float lastTime;
+    int framecount;
+
+    public void ShowFps()
+    {
+        float now = Time.time;
+        int newCount = Time.frameCount;
+
+        float fps = (newCount - framecount) / (now - lastTime);
+
+        Debug.Log("FPS " + fps);
+
+        framecount = newCount;
+        lastTime = now;
+    }
+
 
     private static void usage(string[] args)
     {
         Console.WriteLine("Usage:");
         Console.WriteLine($"\t{args[0]} Telepathy <port>   To start Telepathy server");
         Console.WriteLine($"\t{args[0]} Async <port>       To start Async TCP server");
+        Console.WriteLine($"\t{args[0]} Saea <port>       To start Saea TCP server");
 
         Application.Quit();
     }
@@ -73,18 +101,47 @@ public class ServerGUI : MonoBehaviour {
             {
                 StartAsyncServer(ushort.Parse(port));
             }
+
+            if (GUILayout.Button("Start Saea Server"))
+            {
+                StartSaeaServer(ushort.Parse(port));
+            }
         }
     }
 
     #region echo server using Async Tcp
+    Mirror.Tcp.Server asyncServer;
+
     private void StartAsyncServer(ushort port)
     {
-        Mirror.Transport.Tcp.Server server = new Mirror.Transport.Tcp.Server();
+        asyncServer = new Mirror.Tcp.Server();
 
-        server.ReceivedData += server.Send;
+        asyncServer.ReceivedData += (connId, data) =>
+        {
+            asyncServer.Send(connId, new ArraySegment<byte>(data));
+        };
 
 
-        server.Listen(port);
+        _ = asyncServer.ListenAsync(port);
+        started = true;
+
+        Debug.Log($"Async Tcp started at port {port}");
+    }
+
+    private void Server_ReceivedData(int arg1, byte[] arg2)
+    {
+        throw new NotImplementedException();
+    }
+    #endregion
+
+    #region echo server using Async Tcp
+    Mirror.Saea.Server saeaServer;
+
+    private void StartSaeaServer(ushort port)
+    {
+        saeaServer = new Mirror.Saea.Server();
+
+        saeaServer.Start(port);
         started = true;
 
         Debug.Log($"Async Tcp started at port {port}");
@@ -93,12 +150,12 @@ public class ServerGUI : MonoBehaviour {
 
     #region echo server in Telepathy
 
-    Telepathy.Server server;
+    Telepathy.Server telepathyServer;
 
     private void StartTelepathyServer(ushort port)
     {
-        server = new Telepathy.Server();
-        server.Start(port);
+        telepathyServer = new Telepathy.Server();
+        telepathyServer.Start(port);
         started = true;
 
         Debug.Log($"Telepathy started at port {port}");
@@ -106,16 +163,28 @@ public class ServerGUI : MonoBehaviour {
 
     private void Update()
     {
-        if (server == null)
-            return;
-
-        Telepathy.Message message;
-
-        while (server.GetNextMessage(out message))
+        if (telepathyServer != null)
         {
 
-            if (message.eventType == Telepathy.EventType.Data)
-                server.Send(message.connectionId, message.data);
+            while (telepathyServer.GetNextMessage(out Telepathy.Message message))
+            {
+
+                if (message.eventType == Telepathy.EventType.Data)
+                    telepathyServer.Send(message.connectionId, message.data);
+            }
+        }
+        else if (saeaServer != null)
+        {
+            while (saeaServer.GetNextMessage(out Mirror.Saea.Message message))
+            {
+
+                if (message.eventType == Mirror.Saea.EventType.Data)
+                    telepathyServer.Send(message.connectionId, message.data);
+            }
+        }
+        else if (asyncServer != null)
+        {
+            asyncServer.Flush();
         }
     }
 
